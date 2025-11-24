@@ -1,0 +1,53 @@
+version: 2
+
+project_name: pubsub
+
+builds:
+  - id: pubsub-server
+    binary: pubsub-server
+    main: ./cmd/pubsub-server
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+    env: [CGO_ENABLED=0]
+
+archives:
+  - name_template: "pubsub_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+      - cmd/pubsub-server/README.md
+      - cmd/pubsub-server/.env.example
+      - cmd/pubsub-server/docker-compose.yml
+
+checksum:
+  name_template: "pubsub_{{ .Version }}_checksums.txt"
+
+release:
+  github:
+    owner: coregx
+    name: pubsub
+  draft: true
+  prerelease: auto
+  name_template: "v{{.Version}}"
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^style:"

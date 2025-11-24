@@ -1,0 +1,55 @@
+# CODEOWNERS for PubSub-Go Library
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# This file defines individuals or teams responsible for code in this repository.
+# Code owners are automatically requested for review when someone opens a pull request
+# that modifies code they own.
+
+# Default owner for everything in the repo
+* @kolkov
+
+# Core pub/sub implementation - Critical business logic
+/publisher.go @kolkov
+/queue_worker.go @kolkov
+/subscription_manager.go @kolkov
+/options.go @kolkov
+
+# Domain models - Rich business logic
+/model/ @kolkov
+
+# Repository interfaces and implementations
+/repositories.go @kolkov
+/adapters/relica/ @kolkov
+
+# Retry strategy - Exponential backoff logic
+/retry/ @kolkov
+
+# Database migrations - Schema evolution
+/migrations/ @kolkov
+/migrations.go @kolkov
+/io.go @kolkov
+
+# Standalone server - REST API and service
+/cmd/pubsub-server/ @kolkov
+
+# Examples - Reference implementations
+/examples/ @kolkov
+
+# Documentation - Keep up to date with code changes
+*.md @kolkov
+/docs/ @kolkov
+
+# GitHub configuration and CI/CD
+/.github/ @kolkov
+
+# Code quality and linting configuration
+/.golangci.yml @kolkov
+/.codecov.yml @kolkov
+/Makefile @kolkov
+
+# Tests - Ensure coverage and reliability
+*_test.go @kolkov
+
+# Go module files - Dependency management
+/go.mod @kolkov
+/go.sum @kolkov
