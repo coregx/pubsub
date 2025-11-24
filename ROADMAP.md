@@ -1,9 +1,9 @@
-# PubSub-Go Library - Development Roadmap
+# PubSub Library - Development Roadmap
 
 > **Production-Ready**: Battle-tested in FreiCON Railway Management System
 > **Approach**: Clean Architecture + Domain-Driven Design + Options Pattern (2025 best practices)
 
-**Last Updated**: 2025-11-24 | **Current Version**: Pre-release | **Strategy**: v0.1.0 → v0.2.0 → v1.0.0 LTS
+**Last Updated**: 2025-11-24 | **Current Version**: v0.1.0 | **Strategy**: v0.1.0 → v0.2.0 → v1.0.0 LTS
 
 ---
 
@@ -71,9 +71,9 @@ v1.0.0 LTS → Long-term support release (2026-Q3-Q4)
 
 ---
 
-## 📊 Current Status (Pre-release)
+## 📊 Current Status (v0.1.0 Released)
 
-**Phase**: 🚀 Pre-release (finalization)
+**Phase**: ✅ v0.1.0 Released (2025-11-24)
 **Quality**: Production-ready (95.9% coverage, 0 linter issues)
 
 **What Works**:

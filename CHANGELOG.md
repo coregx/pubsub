@@ -9,10 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### 🎯 Initial Development
+### 🔮 Upcoming Features
+- HTTP webhook delivery provider
+- gRPC delivery provider
+- Message encryption
+- Rate limiting
+- Prometheus metrics
 
-**Status**: Pre-release development
-**Focus**: Production-ready pub/sub library and standalone service
+---
+
+## [0.1.0] - 2025-11-24
+
+### 🎯 Initial Public Release
+
+**Status**: Production-ready
+**Focus**: Reliable pub/sub library and standalone service for Go 1.25+
 **Quality**: 95.9% test coverage, 0 linter issues, clean architecture
 
 ### ✨ Features Implemented
@@ -40,10 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Environment Config** - 12-factor app compliance
 
 #### Database Support
-- **Multi-Database** - MySQL, PostgreSQL, SQLite via Relica v0.6.0
+- **Multi-Database** - MySQL, PostgreSQL, SQLite via [Relica](https://github.com/coregx/relica)
 - **Embedded Migrations** - Automatic schema setup
 - **Migration Files** - SQL migrations embedded in binary
-- **Relica Integration** - Type-safe struct operations
+- **Relica Integration** - Type-safe struct operations with auto-populate ID
 
 #### Quality & Documentation
 - **Professional Godoc** - Complete API documentation for all exported symbols
@@ -102,7 +113,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Message, Queue, Subscription, DLQ repositories
 - Publisher, Subscriber, Topic repositories
 - Factory functions for all repos
-- Relica v0.6.0 Model() API integration
+- [Relica](https://github.com/coregx/relica) Model() API integration with auto-populate ID
 
 #### Retry Strategy (retry/)
 - `middleware.go` - Exponential backoff strategy
