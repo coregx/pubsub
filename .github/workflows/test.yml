@@ -1,18 +1,5 @@
 name: Tests
 
-# Testing Strategy:
-# - Tests run on Linux, macOS, and Windows (cross-platform library)
-# - PubSub-Go works with MySQL, PostgreSQL, SQLite - must work everywhere
-# - Go 1.25+ required (matches go.mod requirement)
-# - High coverage target: 90%+ (current: 95.9%)
-#
-# Branch Strategy (Git Flow):
-# - feature/** branches: Development work
-# - release/** branches: Pre-release testing (test here BEFORE merging to main)
-# - develop branch: Integration branch
-# - main branch: Production-ready code only (protected)
-# - Pull requests: Must pass all tests before merge
-
 on:
   push:
     branches:
@@ -26,15 +13,17 @@ on:
       - main
       - develop
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
-  # Unit tests - Cross-platform
   unit-tests:
-    name: Unit Tests - ${{ matrix.os }} - Go ${{ matrix.go-version }}
+    name: Unit Tests - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        go-version: ['1.25']  # Match go.mod requirement
 
     steps:
     - name: Checkout code
@@ -43,7 +32,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: ${{ matrix.go-version }}
+        go-version: '1.25'
         cache: true
 
     - name: Download dependencies
@@ -56,25 +45,153 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: go vet ./...
 
-    - name: Run unit tests with race detector
+    - name: Run unit tests
       shell: bash
-      run: go test -short -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+      run: |
+        go test -count=1 -race -coverprofile=coverage.txt -covermode=atomic \
+          ./model/... ./retry/... . \
+          ./cmd/pubsub-server/internal/config/...
 
-    - name: Upload coverage to Codecov
-      if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.25'
+    - name: Upload coverage to Codecov (OIDC)
+      if: matrix.os == 'ubuntu-latest'
       uses: codecov/codecov-action@v5
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+        use_oidc: true
         files: ./coverage.txt
         flags: unittests
         name: codecov-unit
         fail_ci_if_error: false
-        verbose: true
+
+  integration-tests:
+    name: Integration Tests - SQLite
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25'
+        cache: true
+
+    - name: Install SQLite dev
+      run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
+
+    - name: Run adapter integration tests
+      run: |
+        CGO_ENABLED=1 go test -count=1 -race -coverprofile=coverage-integration.txt \
+          -covermode=atomic ./adapters/relica/...
+
+    - name: Upload integration coverage (OIDC)
+      uses: codecov/codecov-action@v5
+      with:
+        use_oidc: true
+        files: ./coverage-integration.txt
+        flags: integration
+        name: codecov-integration
+        fail_ci_if_error: false
+
+  integration-tests-mysql:
+    name: Integration Tests - MySQL 8
+    runs-on: ubuntu-latest
+    needs: unit-tests
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: testpass
+          MYSQL_DATABASE: pubsub_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25'
+        cache: true
+
+    - name: Apply MySQL migrations
+      run: |
+        for f in migrations/mysql/*.sql; do
+          mysql -h 127.0.0.1 -u root -ptestpass pubsub_test < "$f"
+        done
+
+    - name: Run adapter tests against MySQL
+      env:
+        DB_DRIVER: mysql
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_USER: root
+        DB_PASSWORD: testpass
+        DB_NAME: pubsub_test
+      run: |
+        CGO_ENABLED=1 go test -count=1 -race -tags=integration \
+          ./adapters/relica/...
+
+  integration-tests-postgres:
+    name: Integration Tests - PostgreSQL 16
+    runs-on: ubuntu-latest
+    needs: unit-tests
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: pubsub_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25'
+        cache: true
+
+    - name: Apply PostgreSQL migrations
+      env:
+        PGPASSWORD: testpass
+      run: |
+        for f in migrations/postgres/*.sql; do
+          psql -h 127.0.0.1 -U postgres -d pubsub_test -f "$f"
+        done
+
+    - name: Run adapter tests against PostgreSQL
+      env:
+        DB_DRIVER: postgres
+        DB_HOST: 127.0.0.1
+        DB_PORT: 5432
+        DB_USER: postgres
+        DB_PASSWORD: testpass
+        DB_NAME: pubsub_test
+      run: |
+        CGO_ENABLED=1 go test -count=1 -race -tags=integration \
+          ./adapters/relica/...
 
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    continue-on-error: false  # Strict for production library
 
     steps:
     - name: Checkout code
@@ -92,7 +209,6 @@ jobs:
         version: latest
         args: --timeout=5m
 
-  # Formatting check
   formatting:
     name: Code Formatting
     runs-on: ubuntu-latest
@@ -116,4 +232,4 @@ jobs:
           echo "Run 'go fmt ./...' to fix formatting issues."
           exit 1
         fi
-        echo "All files are properly formatted ✓"
+        echo "All files are properly formatted"
