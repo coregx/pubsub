@@ -1,5 +1,3 @@
-// Package relica provides Relica ORM implementations for PubSub repositories.
-//
 //nolint:dupl // Repository pattern requires similar implementations for different types
 package relica
 
@@ -21,7 +19,7 @@ type PublisherRepository struct {
 
 // NewPublisherRepository creates a new PublisherRepository with default table prefix.
 func NewPublisherRepository(sqlDB *sql.DB, driverName string) *PublisherRepository {
-	return &PublisherRepository{db: relica.WrapDB(sqlDB, driverName), tablePrefix: "pubsub_"}
+	return &PublisherRepository{db: relica.WrapDB(sqlDB, driverName), tablePrefix: defaultTablePrefix}
 }
 
 // NewPublisherRepositoryWithPrefix creates a new PublisherRepository with custom table prefix.
@@ -36,8 +34,8 @@ func (r *PublisherRepository) tableName() string {
 // Load retrieves a publisher by ID.
 func (r *PublisherRepository) Load(ctx context.Context, id int64) (model.Publisher, error) {
 	var pub model.Publisher
-	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where("id = ?", id).One(&pub)
-	if errors.Is(err, sql.ErrNoRows) {
+	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where(relica.Eq("id", id)).One(&pub)
+	if errors.Is(err, relica.ErrNotFound) {
 		return pub, pubsub.ErrNoData
 	}
 	if err != nil {
@@ -49,7 +47,6 @@ func (r *PublisherRepository) Load(ctx context.Context, id int64) (model.Publish
 // Save creates or updates a publisher.
 func (r *PublisherRepository) Save(ctx context.Context, m model.Publisher) (model.Publisher, error) {
 	if m.ID == 0 {
-		// Insert using Model() API
 		err := r.db.WithContext(ctx).Model(&m).Table(r.tableName()).Insert()
 		if err != nil {
 			return m, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to insert publisher", err)
@@ -57,7 +54,6 @@ func (r *PublisherRepository) Save(ctx context.Context, m model.Publisher) (mode
 		return m, nil
 	}
 
-	// Update using Model() API
 	err := r.db.WithContext(ctx).Model(&m).Table(r.tableName()).Update()
 	if err != nil {
 		return m, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to update publisher", err)
@@ -68,8 +64,8 @@ func (r *PublisherRepository) Save(ctx context.Context, m model.Publisher) (mode
 // GetByPublisherCode retrieves a publisher by its unique code.
 func (r *PublisherRepository) GetByPublisherCode(ctx context.Context, publisherCode string) (model.Publisher, error) {
 	var pub model.Publisher
-	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where("publisher_code = ?", publisherCode).One(&pub)
-	if errors.Is(err, sql.ErrNoRows) {
+	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where(relica.Eq("publisher_code", publisherCode)).One(&pub)
+	if errors.Is(err, relica.ErrNotFound) {
 		return pub, pubsub.ErrNoData
 	}
 	if err != nil {

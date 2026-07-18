@@ -19,7 +19,7 @@ type DLQRepository struct {
 
 // NewDLQRepository creates a new DLQRepository with default table prefix.
 func NewDLQRepository(sqlDB *sql.DB, driverName string) *DLQRepository {
-	return &DLQRepository{db: relica.WrapDB(sqlDB, driverName), tablePrefix: "pubsub_"}
+	return &DLQRepository{db: relica.WrapDB(sqlDB, driverName), tablePrefix: defaultTablePrefix}
 }
 
 // NewDLQRepositoryWithPrefix creates a new DLQRepository with custom table prefix.
@@ -34,8 +34,8 @@ func (r *DLQRepository) tableName() string {
 // Load retrieves a DLQ item by ID.
 func (r *DLQRepository) Load(ctx context.Context, id int64) (model.DeadLetterQueue, error) {
 	var dlq model.DeadLetterQueue
-	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where("id = ?", id).One(&dlq)
-	if errors.Is(err, sql.ErrNoRows) {
+	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where(relica.Eq("id", id)).One(&dlq)
+	if errors.Is(err, relica.ErrNotFound) {
 		return dlq, pubsub.ErrNoData
 	}
 	if err != nil {
@@ -47,7 +47,6 @@ func (r *DLQRepository) Load(ctx context.Context, id int64) (model.DeadLetterQue
 // Save creates or updates a DLQ item.
 func (r *DLQRepository) Save(ctx context.Context, m model.DeadLetterQueue) (model.DeadLetterQueue, error) {
 	if m.ID == 0 {
-		// Insert using Model() API
 		err := r.db.WithContext(ctx).Model(&m).Table(r.tableName()).Insert()
 		if err != nil {
 			return m, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to insert DLQ", err)
@@ -55,7 +54,6 @@ func (r *DLQRepository) Save(ctx context.Context, m model.DeadLetterQueue) (mode
 		return m, nil
 	}
 
-	// Update using Model() API
 	err := r.db.WithContext(ctx).Model(&m).Table(r.tableName()).Update()
 	if err != nil {
 		return m, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to update DLQ", err)
@@ -65,7 +63,6 @@ func (r *DLQRepository) Save(ctx context.Context, m model.DeadLetterQueue) (mode
 
 // Delete removes a DLQ item.
 func (r *DLQRepository) Delete(ctx context.Context, m model.DeadLetterQueue) error {
-	// Delete using Model() API
 	err := r.db.WithContext(ctx).Model(&m).Table(r.tableName()).Delete()
 	if err != nil {
 		return pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to delete DLQ", err)
@@ -78,10 +75,9 @@ func (r *DLQRepository) FindBySubscription(ctx context.Context, subscriptionID i
 	var dlqs []model.DeadLetterQueue
 	err := r.db.WithContext(ctx).Select("*").
 		From(r.tableName()).
-		Where("subscription_id = ?", subscriptionID).
+		Where(relica.Eq("subscription_id", subscriptionID)).
 		OrderBy("created_at DESC").
 		Limit(int64(limit)).
-		WithContext(ctx).
 		All(&dlqs)
 	if err != nil {
 		return nil, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to find DLQ by subscription", err)
@@ -97,10 +93,9 @@ func (r *DLQRepository) FindUnresolved(ctx context.Context, limit int) ([]model.
 	var dlqs []model.DeadLetterQueue
 	err := r.db.WithContext(ctx).Select("*").
 		From(r.tableName()).
-		Where("is_resolved = ?", false).
+		Where(relica.Eq("is_resolved", false)).
 		OrderBy("created_at ASC").
 		Limit(int64(limit)).
-		WithContext(ctx).
 		All(&dlqs)
 	if err != nil {
 		return nil, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to find unresolved DLQ items", err)
@@ -117,10 +112,9 @@ func (r *DLQRepository) FindOlderThan(ctx context.Context, threshold time.Durati
 	cutoffTime := time.Now().Add(-threshold)
 	err := r.db.WithContext(ctx).Select("*").
 		From(r.tableName()).
-		Where("created_at < ?", cutoffTime).
+		Where(relica.LessThan("created_at", cutoffTime)).
 		OrderBy("created_at ASC").
 		Limit(int64(limit)).
-		WithContext(ctx).
 		All(&dlqs)
 	if err != nil {
 		return nil, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to find old DLQ items", err)
@@ -134,8 +128,8 @@ func (r *DLQRepository) FindOlderThan(ctx context.Context, threshold time.Durati
 // FindByMessageID retrieves a DLQ item for a specific message.
 func (r *DLQRepository) FindByMessageID(ctx context.Context, messageID int64) (model.DeadLetterQueue, error) {
 	var dlq model.DeadLetterQueue
-	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where("message_id = ?", messageID).One(&dlq)
-	if errors.Is(err, sql.ErrNoRows) {
+	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where(relica.Eq("message_id", messageID)).One(&dlq)
+	if errors.Is(err, relica.ErrNotFound) {
 		return dlq, pubsub.ErrNoData
 	}
 	if err != nil {
@@ -144,18 +138,17 @@ func (r *DLQRepository) FindByMessageID(ctx context.Context, messageID int64) (m
 	return dlq, nil
 }
 
-// GetStats retrieves DLQ statistics.
+// GetStats retrieves DLQ statistics using Relica Count() for efficiency.
 func (r *DLQRepository) GetStats(ctx context.Context) (model.DLQStats, error) {
 	var stats model.DLQStats
-	var totalCount, unresolvedCount int64
 
-	err := r.db.WithContext(ctx).Select("COUNT(*)").From(r.tableName()).One(&totalCount)
+	totalCount, err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Count()
 	if err != nil {
 		return stats, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to count total DLQ items", err)
 	}
 	stats.TotalItems = int(totalCount)
 
-	err = r.db.WithContext(ctx).Select("COUNT(*)").From(r.tableName()).Where("is_resolved = ?", false).One(&unresolvedCount)
+	unresolvedCount, err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where(relica.Eq("is_resolved", false)).Count()
 	if err != nil {
 		return stats, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to count unresolved DLQ items", err)
 	}
@@ -166,8 +159,7 @@ func (r *DLQRepository) GetStats(ctx context.Context) (model.DLQStats, error) {
 
 // CountUnresolved returns the count of unresolved DLQ items.
 func (r *DLQRepository) CountUnresolved(ctx context.Context) (int, error) {
-	var count int64
-	err := r.db.WithContext(ctx).Select("COUNT(*)").From(r.tableName()).Where("is_resolved = ?", false).One(&count)
+	count, err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where(relica.Eq("is_resolved", false)).Count()
 	if err != nil {
 		return 0, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to count unresolved DLQ items", err)
 	}

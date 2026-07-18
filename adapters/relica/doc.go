@@ -37,3 +37,5 @@
 //	    pubsub.WithLogger(logger),
 //	)
 package relica
+
+const defaultTablePrefix = "pubsub_"

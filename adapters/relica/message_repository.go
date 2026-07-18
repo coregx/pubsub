@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/coregx/pubsub"
 	"github.com/coregx/pubsub/model"
@@ -18,7 +19,7 @@ type MessageRepository struct {
 
 // NewMessageRepository creates a new MessageRepository with default table prefix.
 func NewMessageRepository(sqlDB *sql.DB, driverName string) *MessageRepository {
-	return &MessageRepository{db: relica.WrapDB(sqlDB, driverName), tablePrefix: "pubsub_"}
+	return &MessageRepository{db: relica.WrapDB(sqlDB, driverName), tablePrefix: defaultTablePrefix}
 }
 
 // NewMessageRepositoryWithPrefix creates a new MessageRepository with custom table prefix.
@@ -33,8 +34,8 @@ func (r *MessageRepository) tableName() string {
 // Load retrieves a message by ID.
 func (r *MessageRepository) Load(ctx context.Context, id int64) (model.Message, error) {
 	var msg model.Message
-	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where("id = ?", id).One(&msg)
-	if errors.Is(err, sql.ErrNoRows) {
+	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where(relica.Eq("id", id)).One(&msg)
+	if errors.Is(err, relica.ErrNotFound) {
 		return msg, pubsub.ErrNoData
 	}
 	if err != nil {
@@ -46,16 +47,13 @@ func (r *MessageRepository) Load(ctx context.Context, id int64) (model.Message, 
 // Save creates or updates a message.
 func (r *MessageRepository) Save(ctx context.Context, m model.Message) (model.Message, error) {
 	if m.ID == 0 {
-		// Insert new message using Model() API
 		err := r.db.WithContext(ctx).Model(&m).Table(r.tableName()).Insert()
 		if err != nil {
 			return m, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to insert message", err)
 		}
-		// m.ID is auto-populated by Model().Insert()
 		return m, nil
 	}
 
-	// Update existing message
 	err := r.db.WithContext(ctx).Model(&m).Table(r.tableName()).Update()
 	if err != nil {
 		return m, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to update message", err)
@@ -65,7 +63,6 @@ func (r *MessageRepository) Save(ctx context.Context, m model.Message) (model.Me
 
 // Delete removes a message.
 func (r *MessageRepository) Delete(ctx context.Context, m model.Message) error {
-	// Delete using Model() API - auto WHERE id = ?
 	err := r.db.WithContext(ctx).Model(&m).Table(r.tableName()).Delete()
 	if err != nil {
 		return pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to delete message", err)
@@ -74,13 +71,14 @@ func (r *MessageRepository) Delete(ctx context.Context, m model.Message) error {
 }
 
 // FindOutdatedMessages finds messages older than the specified number of days.
+// Uses Go time calculation for cross-database compatibility (MySQL, PostgreSQL, SQLite).
 func (r *MessageRepository) FindOutdatedMessages(ctx context.Context, days int) ([]model.Message, error) {
 	var messages []model.Message
+	cutoff := time.Now().AddDate(0, 0, -days)
 	err := r.db.WithContext(ctx).Select("*").
 		From(r.tableName()).
-		Where("created_at < DATE_SUB(NOW(), INTERVAL ? DAY)", days).
+		Where(relica.LessThan("created_at", cutoff)).
 		OrderBy("created_at ASC").
-		WithContext(ctx).
 		All(&messages)
 	if err != nil {
 		return nil, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to find outdated messages", err)

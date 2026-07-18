@@ -21,7 +21,7 @@ type QueueRepository struct {
 func NewQueueRepository(sqlDB *sql.DB, driverName string) *QueueRepository {
 	return &QueueRepository{
 		db:          relica.WrapDB(sqlDB, driverName),
-		tablePrefix: "pubsub_",
+		tablePrefix: defaultTablePrefix,
 	}
 }
 
@@ -40,27 +40,22 @@ func (r *QueueRepository) tableName() string {
 // Load retrieves a queue item by ID.
 func (r *QueueRepository) Load(ctx context.Context, id int64) (model.Queue, error) {
 	var queue model.Queue
-
 	err := r.db.WithContext(ctx).Select("*").
 		From(r.tableName()).
-		Where("id = ?", id).
-		WithContext(ctx).
+		Where(relica.Eq("id", id)).
 		One(&queue)
-
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, relica.ErrNotFound) {
 		return queue, pubsub.ErrNoData
 	}
 	if err != nil {
 		return queue, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to load queue", err)
 	}
-
 	return queue, nil
 }
 
 // Save creates or updates a queue item.
 func (r *QueueRepository) Save(ctx context.Context, m *model.Queue) (*model.Queue, error) {
 	if m.ID == 0 {
-		// Insert using Model() API - auto-populates m.ID
 		err := r.db.WithContext(ctx).Model(m).Table(r.tableName()).Insert()
 		if err != nil {
 			return m, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to insert queue", err)
@@ -68,140 +63,121 @@ func (r *QueueRepository) Save(ctx context.Context, m *model.Queue) (*model.Queu
 		return m, nil
 	}
 
-	// Update using Model() API - auto WHERE id = ?
 	err := r.db.WithContext(ctx).Model(m).Table(r.tableName()).Update()
 	if err != nil {
 		return m, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to update queue", err)
 	}
-
 	return m, nil
 }
 
 // Delete removes a queue item.
 func (r *QueueRepository) Delete(ctx context.Context, m *model.Queue) error {
-	// Delete using Model() API - auto WHERE id = ?
 	err := r.db.WithContext(ctx).Model(m).Table(r.tableName()).Delete()
 	if err != nil {
 		return pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to delete queue", err)
 	}
-
 	return nil
 }
 
 // FindByMessageID retrieves a queue item by message and subscription IDs.
 func (r *QueueRepository) FindByMessageID(ctx context.Context, subscriptionID, messageID int64) (model.Queue, error) {
 	var queue model.Queue
-
 	err := r.db.WithContext(ctx).Select("*").
 		From(r.tableName()).
-		Where("subscription_id = ? AND message_id = ?", subscriptionID, messageID).
-		WithContext(ctx).
+		Where(relica.And(
+			relica.Eq("subscription_id", subscriptionID),
+			relica.Eq("message_id", messageID),
+		)).
 		One(&queue)
-
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, relica.ErrNotFound) {
 		return queue, pubsub.ErrNoData
 	}
 	if err != nil {
 		return queue, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to find queue by message", err)
 	}
-
 	return queue, nil
 }
 
 // FindBySubscriptionID retrieves all queue items for a subscription.
 func (r *QueueRepository) FindBySubscriptionID(ctx context.Context, subscriptionID int64) ([]model.Queue, error) {
 	var queues []model.Queue
-
 	err := r.db.WithContext(ctx).Select("*").
 		From(r.tableName()).
-		Where("subscription_id = ?", subscriptionID).
+		Where(relica.Eq("subscription_id", subscriptionID)).
 		OrderBy("created_at DESC").
-		WithContext(ctx).
 		All(&queues)
-
 	if err != nil {
 		return nil, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to find queues by subscription", err)
 	}
-
 	if len(queues) == 0 {
 		return nil, pubsub.ErrNoData
 	}
-
 	return queues, nil
 }
 
 // FindPendingItems retrieves pending queue items ready for first delivery.
 func (r *QueueRepository) FindPendingItems(ctx context.Context, limit int) ([]model.Queue, error) {
 	var queues []model.Queue
-
 	now := time.Now()
-
 	err := r.db.WithContext(ctx).Select("*").
 		From(r.tableName()).
-		Where("status = ? AND next_retry_at <= ?", model.QueueStatusPending, now).
+		Where(relica.And(
+			relica.Eq("status", model.QueueStatusPending),
+			relica.LessOrEqual("next_retry_at", now),
+		)).
 		OrderBy("created_at ASC").
 		Limit(int64(limit)).
-		WithContext(ctx).
 		All(&queues)
-
 	if err != nil {
 		return nil, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to find pending items", err)
 	}
-
 	if len(queues) == 0 {
 		return nil, pubsub.ErrNoData
 	}
-
 	return queues, nil
 }
 
 // FindRetryableItems retrieves failed queue items ready for retry.
 func (r *QueueRepository) FindRetryableItems(ctx context.Context, limit int) ([]model.Queue, error) {
 	var queues []model.Queue
-
 	now := time.Now()
-
 	err := r.db.WithContext(ctx).Select("*").
 		From(r.tableName()).
-		Where("status = ? AND next_retry_at <= ?", model.QueueStatusFailed, now).
+		Where(relica.And(
+			relica.Eq("status", model.QueueStatusFailed),
+			relica.LessOrEqual("next_retry_at", now),
+		)).
 		OrderBy("created_at ASC").
 		Limit(int64(limit)).
-		WithContext(ctx).
 		All(&queues)
-
 	if err != nil {
 		return nil, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to find retryable items", err)
 	}
-
 	if len(queues) == 0 {
 		return nil, pubsub.ErrNoData
 	}
-
 	return queues, nil
 }
 
 // FindExpiredItems retrieves expired queue items that should be cleaned up.
 func (r *QueueRepository) FindExpiredItems(ctx context.Context, limit int) ([]model.Queue, error) {
 	var queues []model.Queue
-
 	now := time.Now()
-
 	err := r.db.WithContext(ctx).Select("*").
 		From(r.tableName()).
-		Where("expires_at <= ? AND status != ?", now, model.QueueStatusSent).
+		Where(relica.And(
+			relica.LessOrEqual("expires_at", now),
+			relica.NotEq("status", model.QueueStatusSent),
+		)).
 		OrderBy("expires_at ASC").
 		Limit(int64(limit)).
-		WithContext(ctx).
 		All(&queues)
-
 	if err != nil {
 		return nil, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to find expired items", err)
 	}
-
 	if len(queues) == 0 {
 		return nil, pubsub.ErrNoData
 	}
-
 	return queues, nil
 }
 
@@ -212,13 +188,10 @@ func (r *QueueRepository) UpdateNextRetry(ctx context.Context, id int64, nextRet
 			"next_retry_at": nextRetryAt,
 			"attempt_count": attemptCount,
 		}).
-		Where("id = ?", id).
-		WithContext(ctx).
+		Where(relica.Eq("id", id)).
 		Execute()
-
 	if err != nil {
 		return pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to update next retry", err)
 	}
-
 	return nil
 }

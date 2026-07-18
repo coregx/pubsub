@@ -1,5 +1,3 @@
-// Package relica provides Relica ORM implementations for PubSub repositories.
-//
 //nolint:dupl // Repository pattern requires similar implementations for different types
 package relica
 
@@ -21,7 +19,7 @@ type TopicRepository struct {
 
 // NewTopicRepository creates a new TopicRepository with default table prefix.
 func NewTopicRepository(sqlDB *sql.DB, driverName string) *TopicRepository {
-	return &TopicRepository{db: relica.WrapDB(sqlDB, driverName), tablePrefix: "pubsub_"}
+	return &TopicRepository{db: relica.WrapDB(sqlDB, driverName), tablePrefix: defaultTablePrefix}
 }
 
 // NewTopicRepositoryWithPrefix creates a new TopicRepository with custom table prefix.
@@ -36,8 +34,8 @@ func (r *TopicRepository) tableName() string {
 // Load retrieves a topic by ID.
 func (r *TopicRepository) Load(ctx context.Context, id int64) (model.Topic, error) {
 	var topic model.Topic
-	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where("id = ?", id).One(&topic)
-	if errors.Is(err, sql.ErrNoRows) {
+	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where(relica.Eq("id", id)).One(&topic)
+	if errors.Is(err, relica.ErrNotFound) {
 		return topic, pubsub.ErrNoData
 	}
 	if err != nil {
@@ -49,7 +47,6 @@ func (r *TopicRepository) Load(ctx context.Context, id int64) (model.Topic, erro
 // Save creates or updates a topic.
 func (r *TopicRepository) Save(ctx context.Context, m model.Topic) (model.Topic, error) {
 	if m.ID == 0 {
-		// Insert using Model() API
 		err := r.db.WithContext(ctx).Model(&m).Table(r.tableName()).Insert()
 		if err != nil {
 			return m, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to insert topic", err)
@@ -57,7 +54,6 @@ func (r *TopicRepository) Save(ctx context.Context, m model.Topic) (model.Topic,
 		return m, nil
 	}
 
-	// Update using Model() API
 	err := r.db.WithContext(ctx).Model(&m).Table(r.tableName()).Update()
 	if err != nil {
 		return m, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to update topic", err)
@@ -68,8 +64,8 @@ func (r *TopicRepository) Save(ctx context.Context, m model.Topic) (model.Topic,
 // GetByTopicCode retrieves a topic by its unique code.
 func (r *TopicRepository) GetByTopicCode(ctx context.Context, topicCode string) (model.Topic, error) {
 	var topic model.Topic
-	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where("topic_code = ?", topicCode).One(&topic)
-	if errors.Is(err, sql.ErrNoRows) {
+	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where(relica.Eq("topic_code", topicCode)).One(&topic)
+	if errors.Is(err, relica.ErrNotFound) {
 		return topic, pubsub.ErrNoData
 	}
 	if err != nil {

@@ -18,7 +18,7 @@ type SubscriberRepository struct {
 
 // NewSubscriberRepository creates a new SubscriberRepository with default table prefix.
 func NewSubscriberRepository(sqlDB *sql.DB, driverName string) *SubscriberRepository {
-	return &SubscriberRepository{db: relica.WrapDB(sqlDB, driverName), tablePrefix: "pubsub_"}
+	return &SubscriberRepository{db: relica.WrapDB(sqlDB, driverName), tablePrefix: defaultTablePrefix}
 }
 
 // NewSubscriberRepositoryWithPrefix creates a new SubscriberRepository with custom table prefix.
@@ -33,8 +33,8 @@ func (r *SubscriberRepository) tableName() string {
 // Load retrieves a subscriber by ID.
 func (r *SubscriberRepository) Load(ctx context.Context, id int64) (model.Subscriber, error) {
 	var sub model.Subscriber
-	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where("id = ?", id).One(&sub)
-	if errors.Is(err, sql.ErrNoRows) {
+	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where(relica.Eq("id", id)).One(&sub)
+	if errors.Is(err, relica.ErrNotFound) {
 		return sub, pubsub.ErrNoData
 	}
 	if err != nil {
@@ -46,7 +46,6 @@ func (r *SubscriberRepository) Load(ctx context.Context, id int64) (model.Subscr
 // Save creates or updates a subscriber.
 func (r *SubscriberRepository) Save(ctx context.Context, m model.Subscriber) (model.Subscriber, error) {
 	if m.ID == 0 {
-		// Insert using Model() API
 		err := r.db.WithContext(ctx).Model(&m).Table(r.tableName()).Insert()
 		if err != nil {
 			return m, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to insert subscriber", err)
@@ -54,7 +53,6 @@ func (r *SubscriberRepository) Save(ctx context.Context, m model.Subscriber) (mo
 		return m, nil
 	}
 
-	// Update using Model() API
 	err := r.db.WithContext(ctx).Model(&m).Table(r.tableName()).Update()
 	if err != nil {
 		return m, pubsub.NewErrorWithCause(pubsub.ErrCodeDatabase, "failed to update subscriber", err)
@@ -65,8 +63,8 @@ func (r *SubscriberRepository) Save(ctx context.Context, m model.Subscriber) (mo
 // FindByClientID retrieves a subscriber by client ID.
 func (r *SubscriberRepository) FindByClientID(ctx context.Context, clientID int64) (model.Subscriber, error) {
 	var sub model.Subscriber
-	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where("client_id = ?", clientID).One(&sub)
-	if errors.Is(err, sql.ErrNoRows) {
+	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where(relica.Eq("client_id", clientID)).One(&sub)
+	if errors.Is(err, relica.ErrNotFound) {
 		return sub, pubsub.ErrNoData
 	}
 	if err != nil {
@@ -78,8 +76,8 @@ func (r *SubscriberRepository) FindByClientID(ctx context.Context, clientID int6
 // FindByName retrieves a subscriber by name.
 func (r *SubscriberRepository) FindByName(ctx context.Context, name string) (model.Subscriber, error) {
 	var sub model.Subscriber
-	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where("name = ?", name).One(&sub)
-	if errors.Is(err, sql.ErrNoRows) {
+	err := r.db.WithContext(ctx).Select("*").From(r.tableName()).Where(relica.Eq("name", name)).One(&sub)
+	if errors.Is(err, relica.ErrNotFound) {
 		return sub, pubsub.ErrNoData
 	}
 	if err != nil {
