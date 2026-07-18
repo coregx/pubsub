@@ -17,18 +17,18 @@ import (
 
 // mockQueueRepository implements QueueRepository for QueueWorker tests.
 type mockQueueRepository struct {
-	items         map[int64]*model.Queue
-	nextID        int64
-	pendingItems  []model.Queue
-	retryItems    []model.Queue
-	expiredItems  []model.Queue
-	saveErr       error
-	deleteErr     error
-	pendingErr    error
-	retryErr      error
-	expiredErr    error
-	savedItems    []*model.Queue
-	deletedItems  []*model.Queue
+	items        map[int64]*model.Queue
+	nextID       int64
+	pendingItems []model.Queue
+	retryItems   []model.Queue
+	expiredItems []model.Queue
+	saveErr      error
+	deleteErr    error
+	pendingErr   error
+	retryErr     error
+	expiredErr   error
+	savedItems   []*model.Queue
+	deletedItems []*model.Queue
 }
 
 func newMockQueueRepository() *mockQueueRepository {
@@ -895,4 +895,3 @@ func (m *mockNotificationService) NotifySubscriptionCreated(_ context.Context, _
 func (m *mockNotificationService) NotifySubscriptionDeactivated(_ context.Context, _ model.Subscription) error {
 	return nil
 }
-

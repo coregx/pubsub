@@ -11,8 +11,6 @@
 //
 // The tests run automatically on Linux/macOS CI where CGO+gcc are available.
 // On Windows without a C toolchain, the build tag excludes this file from compilation.
-//
-//nolint:dupl // Integration tests have similar structure by design — each tests a different repository
 package relica
 
 import (
@@ -40,10 +38,10 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic("failed to open sqlite3: " + err.Error())
 	}
-	defer testDB.Close()
-
 	createTables(testDB)
-	os.Exit(m.Run())
+	code := m.Run()
+	testDB.Close()
+	os.Exit(code)
 }
 
 // createTables creates all tables needed by integration tests using SQLite-compatible DDL.
@@ -54,11 +52,11 @@ func TestMain(m *testing.M) {
 //     For a field named "ID" this produces map key "ID" (uppercase), not "id".
 //
 //  2. Relica's Insert() attempts to remove the zero-valued PK via:
-//       delete(filteredMap, pkInfo.Columns[0])  // pkInfo.Columns[0] == "id" (lowercase)
+//     delete(filteredMap, pkInfo.Columns[0])  // pkInfo.Columns[0] == "id" (lowercase)
 //     Because the map key is "ID" (uppercase) this delete is a no-op: the field
 //     "ID"=0 remains in the map and is sent to SQLite explicitly.
 //
-//  3. In SQLite with "INTEGER PRIMARY KEY" the rowid alias behaviour means that
+//  3. In SQLite with "INTEGER PRIMARY KEY" the rowid alias behavior means that
 //     inserting id=0 is allowed (rowid 0), and last_insert_rowid() returns 0,
 //     so Relica's auto-populate sets m.ID=0 again — breaking all subsequent operations.
 //

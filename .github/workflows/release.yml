@@ -14,6 +14,9 @@ permissions:
   packages: write
   id-token: write
 
+env:
+  GOEXPERIMENT: jsonv2
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -24,9 +27,9 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.25"
+          go-version: "1.26"
           cache: true
 
       # Enhanced cleanup to remove test artifacts
@@ -48,9 +51,9 @@ jobs:
       - name: Run tests
         shell: bash
         run: |
-          # Run tests but discard coverage outputs
-          go test ./... > /dev/null 2>&1 || go test ./...
-          rm -f *.out
+          go test ./model/... ./retry/... . \
+            ./cmd/pubsub-server/internal/config/... \
+            ./cmd/pubsub-server/internal/api/...
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6

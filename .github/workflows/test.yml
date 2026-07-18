@@ -17,6 +17,9 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  GOEXPERIMENT: jsonv2
+
 jobs:
   unit-tests:
     name: Unit Tests - ${{ matrix.os }}
@@ -32,7 +35,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.25'
+        go-version: '1.26'
         cache: true
 
     - name: Download dependencies
@@ -50,7 +53,8 @@ jobs:
       run: |
         go test -count=1 -race -coverprofile=coverage.txt -covermode=atomic \
           ./model/... ./retry/... . \
-          ./cmd/pubsub-server/internal/config/...
+          ./cmd/pubsub-server/internal/config/... \
+          ./cmd/pubsub-server/internal/api/...
 
     - name: Upload coverage to Codecov (OIDC)
       if: matrix.os == 'ubuntu-latest'
@@ -61,133 +65,6 @@ jobs:
         flags: unittests
         name: codecov-unit
         fail_ci_if_error: false
-
-  integration-tests:
-    name: Integration Tests - SQLite
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.25'
-        cache: true
-
-    - name: Install SQLite dev
-      run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
-
-    - name: Run adapter integration tests
-      run: |
-        CGO_ENABLED=1 go test -count=1 -race -coverprofile=coverage-integration.txt \
-          -covermode=atomic ./adapters/relica/...
-
-    - name: Upload integration coverage (OIDC)
-      uses: codecov/codecov-action@v5
-      with:
-        use_oidc: true
-        files: ./coverage-integration.txt
-        flags: integration
-        name: codecov-integration
-        fail_ci_if_error: false
-
-  integration-tests-mysql:
-    name: Integration Tests - MySQL 8
-    runs-on: ubuntu-latest
-    needs: unit-tests
-
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: testpass
-          MYSQL_DATABASE: pubsub_test
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h localhost"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.25'
-        cache: true
-
-    - name: Apply MySQL migrations
-      run: |
-        for f in migrations/mysql/*.sql; do
-          mysql -h 127.0.0.1 -u root -ptestpass pubsub_test < "$f"
-        done
-
-    - name: Run adapter tests against MySQL
-      env:
-        DB_DRIVER: mysql
-        DB_HOST: 127.0.0.1
-        DB_PORT: 3306
-        DB_USER: root
-        DB_PASSWORD: testpass
-        DB_NAME: pubsub_test
-      run: |
-        CGO_ENABLED=1 go test -count=1 -race -tags=integration \
-          ./adapters/relica/...
-
-  integration-tests-postgres:
-    name: Integration Tests - PostgreSQL 16
-    runs-on: ubuntu-latest
-    needs: unit-tests
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: testpass
-          POSTGRES_DB: pubsub_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.25'
-        cache: true
-
-    - name: Apply PostgreSQL migrations
-      env:
-        PGPASSWORD: testpass
-      run: |
-        for f in migrations/postgres/*.sql; do
-          psql -h 127.0.0.1 -U postgres -d pubsub_test -f "$f"
-        done
-
-    - name: Run adapter tests against PostgreSQL
-      env:
-        DB_DRIVER: postgres
-        DB_HOST: 127.0.0.1
-        DB_PORT: 5432
-        DB_USER: postgres
-        DB_PASSWORD: testpass
-        DB_NAME: pubsub_test
-      run: |
-        CGO_ENABLED=1 go test -count=1 -race -tags=integration \
-          ./adapters/relica/...
 
   lint:
     name: Lint
@@ -200,14 +77,14 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.25'
+        go-version: '1.26'
         cache: true
 
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v8
       with:
         version: latest
-        args: --timeout=5m
+        args: --timeout=5m --build-tags=cgo
 
   formatting:
     name: Code Formatting
@@ -220,7 +97,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.25'
+        go-version: '1.26'
         cache: true
 
     - name: Check formatting

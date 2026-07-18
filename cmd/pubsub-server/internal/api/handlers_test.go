@@ -246,13 +246,13 @@ func (m *mockSubscriberRepo) FindByName(_ context.Context, _ string) (model.Subs
 
 // testDeps holds the mock repositories and constructed services for a test.
 type testDeps struct {
-	msgRepo         *mockMessageRepo
-	queueRepo       *mockQueueRepo
+	msgRepo          *mockMessageRepo
+	queueRepo        *mockQueueRepo
 	subscriptionRepo *mockSubscriptionRepo
-	topicRepo       *mockTopicRepo
-	subscriberRepo  *mockSubscriberRepo
-	publisher       *pubsub.Publisher
-	subManager      *pubsub.SubscriptionManager
+	topicRepo        *mockTopicRepo
+	subscriberRepo   *mockSubscriberRepo
+	publisher        *pubsub.Publisher
+	subManager       *pubsub.SubscriptionManager
 }
 
 // newTestDeps creates mock repos and constructs Publisher + SubscriptionManager.

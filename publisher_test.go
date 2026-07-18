@@ -163,8 +163,8 @@ func (m *mockSubscriptionRepositoryForPublisher) FindAllActive(_ context.Context
 
 // mockTopicRepository implements TopicRepository for testing.
 type mockTopicRepository struct {
-	topics         map[string]model.Topic
-	getByCodeErr   error
+	topics       map[string]model.Topic
+	getByCodeErr error
 }
 
 func newMockTopicRepository() *mockTopicRepository {
