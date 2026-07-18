@@ -9,12 +9,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### 🔮 Upcoming Features
+### Upcoming Features
 - HTTP webhook delivery provider
 - gRPC delivery provider
 - Message encryption
 - Rate limiting
 - Prometheus metrics
+
+---
+
+## [0.2.0] - 2026-07-18
+
+### Relica v0.14.1 Migration
+
+The entire data access layer has been modernized to use Relica v0.14.1 recommended patterns:
+
+- **Type-safe expression API** — All queries use `relica.Eq()`, `relica.And()`, `relica.LessOrEqual()`, `relica.NotEq()`, `relica.LessThan()` instead of positional placeholders
+- **`relica.ErrNotFound`** — Replaced `sql.ErrNoRows` checks with Relica sentinel error
+- **`Count()`** — DLQ statistics use Relica convenience method instead of manual `SELECT COUNT(*)`
+- **`AndWhere()`** — Dynamic conditional WHERE clauses use explicit `AndWhere()` method
+- **Cross-DB compatibility** — Removed MySQL-specific `DATE_SUB(NOW(), INTERVAL ? DAY)`, replaced with Go `time.Now().AddDate()`
+- **`defaultTablePrefix`** — Extracted repeated `"pubsub_"` string into package constant
+
+### Fursy v0.4.0 HTTP Framework
+
+The standalone server has been migrated from `net/http` to [Fursy](https://github.com/coregx/fursy):
+
+- **Type-safe generic handlers** — `fursy.Box[Req, Res]` with automatic JSON binding
+- **RFC 9457 Problem Details** — Standardized error responses via `box.Problem()`
+- **Typed response structs** — Replaced `map[string]interface{}` with `HealthResponse`, `PublishResponse`, etc.
+- **Built-in middleware** — `middleware.Logger()` and `middleware.Recovery()`
+- **Graceful shutdown** — `router.ListenAndServeWithShutdown()` with `OnShutdown` callbacks
+- **Path parameters** — `box.Param("id")` instead of manual `splitPath()` parsing
+- **`json.RawMessage`** — Zero-copy passthrough for publish data
+
+### Comprehensive Test Suite
+
+- **75 unit tests** for Publisher, QueueWorker, SubscriptionManager (82.4% coverage)
+- **22 HTTP handler tests** with httptest + Fursy router (94.4% coverage)
+- **12 config tests** for environment loading and validation (100% coverage)
+- **Integration tests** for all 7 Relica adapters with SQLite in-memory
+- **0 linter issues** across entire codebase
+
+### CI/CD Improvements
+
+- **OIDC Codecov** — Replaced token-based authentication with GitHub OIDC
+- **Integration test job** — SQLite adapter tests on Linux with CGO
+- **MySQL 8.0 service container** — Integration tests against real MySQL
+- **PostgreSQL 16 service container** — Integration tests against real PostgreSQL
+- **Separate unit/integration tests** — CGO-free unit tests on all 3 OS
+
+### Dependencies Updated
+
+| Dependency | From | To |
+|-----------|------|-----|
+| `coregx/relica` | v0.7.0 | v0.14.1 |
+| `coregx/fursy` | — | v0.4.0 (new) |
+| `go-sql-driver/mysql` | v1.9.3 | v1.10.0 |
+| `lib/pq` | v1.10.9 | v1.12.3 |
+| `mattn/go-sqlite3` | v1.14.32 | v1.14.48 |
+| `filippo.io/edwards25519` | v1.1.0 | v1.2.0 |
+| `opentelemetry/otel` | v1.21.0 | removed (unused) |
+
+### Quality Metrics
+
+| Metric | v0.1.0 | v0.2.0 |
+|--------|--------|--------|
+| Test coverage (model) | 95.9% | 95.9% |
+| Test coverage (retry) | 100% | 100% |
+| Test coverage (root) | 0% | 82.4% |
+| Test coverage (config) | 0% | 100% |
+| Test coverage (handlers) | 0% | 94.4% |
+| Linter issues | 0 | 0 |
+| CI databases | — | SQLite + MySQL + PostgreSQL |
 
 ---
 

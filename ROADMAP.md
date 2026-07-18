@@ -3,7 +3,7 @@
 > **Production-Ready**: Battle-tested in FreiCON Railway Management System
 > **Approach**: Clean Architecture + Domain-Driven Design + Options Pattern (2025 best practices)
 
-**Last Updated**: 2025-11-24 | **Current Version**: v0.1.0 | **Strategy**: v0.1.0 → v0.2.0 → v1.0.0 LTS
+**Last Updated**: 2026-07-18 | **Current Version**: v0.2.0 | **Strategy**: v0.1.0 → v0.2.0 → v1.0.0 LTS
 
 ---
 
@@ -55,13 +55,12 @@ v1.0.0 LTS → Long-term support release (2026-Q3-Q4)
 - Standalone REST API service
 - 95.9% test coverage
 
-**v0.2.0** = Enhanced features and providers
-- HTTP webhook delivery provider
-- gRPC delivery provider
-- Message encryption
-- Rate limiting
-- Prometheus metrics
-- Advanced DLQ management
+**v0.2.0** = Enterprise infrastructure upgrade ✅ RELEASED
+- Relica v0.14.1 type-safe expression API
+- Fursy v0.4.0 HTTP framework with generic handlers
+- RFC 9457 Problem Details for error responses
+- Comprehensive test suite (82-100% coverage across packages)
+- CI with MySQL/PostgreSQL service containers + OIDC Codecov
 
 **v1.0.0** = Production LTS
 - API stability guarantee
@@ -71,10 +70,10 @@ v1.0.0 LTS → Long-term support release (2026-Q3-Q4)
 
 ---
 
-## 📊 Current Status (v0.1.0 Released)
+## Current Status (v0.2.0 Released)
 
-**Phase**: ✅ v0.1.0 Released (2025-11-24)
-**Quality**: Production-ready (95.9% coverage, 0 linter issues)
+**Phase**: v0.2.0 Released (2026-07-18)
+**Quality**: Enterprise-grade (82-100% coverage, 0 linter issues)
 
 **What Works**:
 - ✅ Message publishing with topic-based routing
@@ -83,19 +82,18 @@ v1.0.0 LTS → Long-term support release (2026-Q3-Q4)
 - ✅ Dead Letter Queue (DLQ) with statistics
 - ✅ Subscription management (CRUD operations)
 - ✅ Multi-database support (MySQL, PostgreSQL, SQLite)
-- ✅ Embedded migrations
-- ✅ Standalone REST API server
-- ✅ Docker support
-- ✅ Clean Architecture + DDD
-- ✅ Options Pattern (2025 best practices)
-- ✅ Pluggable logger interface
-- ✅ Professional godoc documentation
+- ✅ Relica v0.14.1 type-safe expression API
+- ✅ Fursy v0.4.0 HTTP framework with RFC 9457 errors
+- ✅ Comprehensive test suite (109+ tests)
+- ✅ CI with MySQL 8 + PostgreSQL 16 service containers
+- ✅ OIDC Codecov integration
 
 **Validation**:
-- ✅ 95.9% test coverage (model + retry packages)
+- ✅ 82-100% test coverage across all packages
 - ✅ 0 golangci-lint issues (34+ linters)
 - ✅ Battle-tested in FreiCON Railway Management System
 - ✅ Cross-platform (Linux, macOS, Windows)
+- ✅ Integration tests on 3 databases
 
 ---
 
@@ -281,5 +279,5 @@ v1.0.0 LTS → Long-term support release (2026-Q3-Q4)
 
 ---
 
-*Version 1.0 (Updated 2025-11-24)*
-*Current: Pre-release | Phase: Finalization | Next: v0.1.0 (2025-12) | Target: v1.0.0 LTS (2026-Q3-Q4)*
+*Updated 2026-07-18*
+*Current: v0.2.0 | Next: v0.3.0 (delivery providers) | Target: v1.0.0 LTS (2027)*

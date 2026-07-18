@@ -7,38 +7,39 @@ Works both as a **library** for embedding in your application AND as a **standal
 [![CI](https://github.com/coregx/pubsub/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/coregx/pubsub/actions/workflows/test.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/coregx/pubsub.svg)](https://pkg.go.dev/github.com/coregx/pubsub)
 [![Go Report Card](https://goreportcard.com/badge/github.com/coregx/pubsub)](https://goreportcard.com/report/github.com/coregx/pubsub)
+[![codecov](https://codecov.io/gh/coregx/pubsub/branch/main/graph/badge.svg)](https://codecov.io/gh/coregx/pubsub)
 [![License](https://img.shields.io/github/license/coregx/pubsub)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/coregx/pubsub?include_prereleases)](https://github.com/coregx/pubsub/releases)
+[![Release](https://img.shields.io/github/v/release/coregx/pubsub)](https://github.com/coregx/pubsub/releases)
 
-## ✨ Features
+## Features
 
-### Core Features
-- **📨 Reliable Message Delivery** - Guaranteed delivery with exponential backoff retry
-- **🔄 Exponential Backoff** - 30s → 1m → 2m → 4m → 8m → 16m → 30m (max)
-- **💀 Dead Letter Queue (DLQ)** - Automatic handling of failed messages after 5 attempts
-- **📊 DLQ Statistics** - Track failure reasons and resolution metrics
-- **🎯 Domain-Driven Design** - Rich domain models with business logic
-- **🗄️ Repository Pattern** - Clean data access abstraction
+### Core
+- **Reliable Message Delivery** — Guaranteed delivery with exponential backoff retry
+- **Exponential Backoff** — 30s → 1m → 2m → 4m → 8m → 16m → 30m (max)
+- **Dead Letter Queue (DLQ)** — Automatic handling of failed messages after 5 attempts
+- **DLQ Statistics** — Track failure reasons and resolution metrics
+- **Domain-Driven Design** — Rich domain models with business logic
+- **Repository Pattern** — Clean data access abstraction
 
 ### Architecture
-- **🔌 Pluggable** - Bring your own Logger, Notification system
-- **⚙️ Options Pattern** - Modern Go API (2025 best practices)
-- **🏗️ Clean Architecture** - Services, Repositories, Models separation
-- **✅ Battle-Tested** - Production-proven in FreiCON Railway Management System
+- **Pluggable** — Bring your own Logger, Notification system, Delivery gateway
+- **Options Pattern** — Modern Go API (2026 best practices)
+- **Clean Architecture** — Services, Repositories, Models separation
+- **Battle-Tested** — Production-proven in FreiCON Railway Management System
 
 ### Database Support
-- **🐬 MySQL** - Full support with Relica adapters
-- **🐘 PostgreSQL** - Full support with Relica adapters
-- **🪶 SQLite** - Full support with Relica adapters
-- **⚡ Zero Dependencies** - Relica query builder (no ORM bloat)
+- **MySQL** — Full support with [Relica](https://github.com/coregx/relica) adapters
+- **PostgreSQL** — Full support with Relica adapters
+- **SQLite** — Full support with Relica adapters
+- **Type-Safe Queries** — Relica v0.14 expression API (no raw SQL)
 
 ### Deployment Options
-- **📚 As Library** - Embed in your Go application
-- **🐳 As Service** - Standalone PubSub server with REST API
-- **☸️ Docker Ready** - Production Dockerfile + docker-compose
-- **🌐 Cloud Native** - 12-factor app, ENV config, health checks
+- **As Library** — Embed in your Go application
+- **As Service** — Standalone PubSub server with REST API ([Fursy](https://github.com/coregx/fursy) framework)
+- **Docker Ready** — Production Dockerfile + docker-compose
+- **Cloud Native** — 12-factor app, ENV config, health checks
 
-## 📦 Installation
+## Installation
 
 ### As Library
 ```bash
@@ -55,23 +56,16 @@ docker-compose up -d
 go build ./cmd/pubsub-server
 ```
 
-## 🚦 Quick Start
+## Quick Start
 
-### Option 1: Standalone Service (Fastest!)
+### Option 1: Standalone Service
 
 ```bash
-# Windows
-cd cmd/pubsub-server
-start.bat
-
-# Linux/Mac
 cd cmd/pubsub-server
 docker-compose up -d
 ```
 
 Access API at `http://localhost:8080`
-
-See [Server Documentation](cmd/pubsub-server/README.md) for API endpoints.
 
 ### Option 2: Embedded Library
 
@@ -89,13 +83,10 @@ import (
 )
 
 func main() {
-    // Connect to database
     db, _ := sql.Open("mysql", "user:pass@tcp(localhost:3306)/pubsub?parseTime=true")
 
-    // Create repositories (production-ready Relica adapters!)
     repos := relica.NewRepositories(db, "mysql")
 
-    // Create services
     publisher, _ := pubsub.NewPublisher(
         pubsub.WithPublisherRepositories(
             repos.Message, repos.Queue, repos.Subscription, repos.Topic,
@@ -103,61 +94,28 @@ func main() {
         pubsub.WithPublisherLogger(logger),
     )
 
-    // Publish message
     result, _ := publisher.Publish(context.Background(), pubsub.PublishRequest{
         TopicCode:  "user.signup",
         Identifier: "user-123",
         Data:       `{"userId": 123, "email": "user@example.com"}`,
     })
 
-    // Create worker for background processing
     worker, _ := pubsub.NewQueueWorker(
         pubsub.WithRepositories(repos.Queue, repos.Message, repos.Subscription, repos.DLQ),
         pubsub.WithDelivery(transmitterProvider, gateway),
         pubsub.WithLogger(logger),
     )
 
-    // Run worker (processes queue every 30 seconds)
     worker.Run(context.Background(), 30*time.Second)
 }
 ```
 
-## 🗄️ Database Setup
-
-### Using Embedded Migrations (Recommended)
-
-```go
-import "github.com/coregx/pubsub/migrations"
-
-// Apply all migrations
-if err := migrations.ApplyAll(db); err != nil {
-    log.Fatal(err)
-}
-```
-
-### Manual Migrations
-
-```bash
-# MySQL
-mysql -u user -p database < migrations/mysql/001_core_tables.sql
-mysql -u user -p database < migrations/mysql/002_retry_fields.sql
-mysql -u user -p database < migrations/mysql/003_dead_letter_queue.sql
-
-# PostgreSQL
-psql -U user -d database -f migrations/postgres/001_core_tables.sql
-...
-
-# SQLite
-sqlite3 pubsub.db < migrations/sqlite/001_core_tables.sql
-...
-```
-
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────┐
 │         Your Application            │
-│  (or REST API for standalone)       │
+│  (or Fursy REST API for standalone)  │
 └─────────────┬───────────────────────┘
               │
 ┌─────────────▼───────────────────────┐
@@ -168,10 +126,9 @@ sqlite3 pubsub.db < migrations/sqlite/001_core_tables.sql
 └─────────────┬───────────────────────┘
               │
 ┌─────────────▼───────────────────────┐
-│       Relica Adapters               │
-│  (Production-Ready Implementations) │
-│  - Zero dependencies                │
-│  - MySQL / PostgreSQL / SQLite      │
+│    Relica v0.14 Adapters            │
+│  Type-safe expression API           │
+│  MySQL / PostgreSQL / SQLite        │
 └─────────────┬───────────────────────┘
               │
 ┌─────────────▼───────────────────────┐
@@ -179,9 +136,9 @@ sqlite3 pubsub.db < migrations/sqlite/001_core_tables.sql
 └─────────────────────────────────────┘
 ```
 
-## 📡 REST API (Standalone Service)
+## REST API (Standalone Service)
 
-When running as standalone service, PubSub-Go exposes these endpoints:
+The standalone server uses [Fursy](https://github.com/coregx/fursy) framework with type-safe generic handlers and RFC 9457 Problem Details for error responses.
 
 ### Publish Message
 ```bash
@@ -201,8 +158,9 @@ Content-Type: application/json
 ### Subscribe to Topic
 ```bash
 POST /api/v1/subscribe
+
 {
-  "subscriberId": 1,
+  "subscriberID": 1,
   "topicCode": "user.signup",
   "identifier": "webhook-receiver-1"
 }
@@ -210,7 +168,7 @@ POST /api/v1/subscribe
 
 ### List Subscriptions
 ```bash
-GET /api/v1/subscriptions?subscriberId=1
+GET /api/v1/subscriptions?subscriberID=1
 ```
 
 ### Unsubscribe
@@ -223,33 +181,28 @@ DELETE /api/v1/subscriptions/123
 GET /api/v1/health
 ```
 
-See [API Documentation](cmd/pubsub-server/README.md) for full details.
-
-## 🔧 Configuration
+## Configuration
 
 ### Library Configuration (Go)
 
 ```go
-// Options Pattern (2025 best practice)
 worker, err := pubsub.NewQueueWorker(
     pubsub.WithRepositories(queueRepo, msgRepo, subRepo, dlqRepo),
     pubsub.WithDelivery(transmitterProvider, gateway),
     pubsub.WithLogger(logger),
-    pubsub.WithBatchSize(100),              // optional
-    pubsub.WithRetryStrategy(customStrategy), // optional
-    pubsub.WithNotifications(notifService),  // optional
+    pubsub.WithBatchSize(100),
+    pubsub.WithRetryStrategy(customStrategy),
+    pubsub.WithNotifications(notifService),
 )
 ```
 
 ### Service Configuration (ENV)
 
 ```bash
-# Server
 SERVER_HOST=0.0.0.0
 SERVER_PORT=8080
 
-# Database
-DB_DRIVER=mysql
+DB_DRIVER=mysql          # mysql, postgres, sqlite3
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=pubsub
@@ -257,15 +210,12 @@ DB_PASSWORD=your_password
 DB_NAME=pubsub
 DB_PREFIX=pubsub_
 
-# Worker
 PUBSUB_BATCH_SIZE=100
 PUBSUB_WORKER_INTERVAL=30
 PUBSUB_ENABLE_NOTIFICATIONS=true
 ```
 
-See [`.env.example`](cmd/pubsub-server/.env.example) for all options.
-
-## 📊 How It Works
+## How It Works
 
 ### Message Flow
 
@@ -298,34 +248,38 @@ Attempt 5: +4 minutes
 Attempt 6: +8 minutes (moves to DLQ after this)
 ```
 
-## 🧪 Testing
+## Testing
 
 ```bash
-# Run all tests
+# Run unit tests
+go test ./model/... ./retry/... . ./cmd/pubsub-server/internal/config/...
+
+# Run with coverage
+go test -cover ./model/... ./retry/... . ./cmd/pubsub-server/internal/api/...
+
+# Integration tests (requires CGO for SQLite)
+CGO_ENABLED=1 go test ./adapters/relica/...
+
+# All tests
 go test ./...
-
-# With coverage
-go test ./... -cover
-
-# Model tests (95.9% coverage)
-go test ./model/... -cover
-
-# Integration tests (requires database)
-go test ./adapters/relica/... -cover
 ```
 
-## 🐳 Docker Deployment
+### Test Coverage
 
-### Quick Start
-```bash
-cd cmd/pubsub-server
-docker-compose up -d
-```
+| Package | Coverage |
+|---------|----------|
+| `model/` | 95.9% |
+| `retry/` | 100% |
+| `pubsub` (root) | 82.4% |
+| `config/` | 100% |
+| `api/` (handlers) | 94.4% |
+| `adapters/relica/` | CI only (SQLite CGO) |
 
-### Production Build
+## Docker Deployment
+
 ```bash
 # Build image
-docker build -t pubsub-server:0.1.0 -f cmd/pubsub-server/Dockerfile .
+docker build -t pubsub-server:0.2.0 -f cmd/pubsub-server/Dockerfile .
 
 # Run with environment
 docker run -d \
@@ -333,41 +287,39 @@ docker run -d \
   -e DB_DRIVER=mysql \
   -e DB_HOST=mysql \
   -e DB_PASSWORD=secret \
-  pubsub-server:0.1.0
+  pubsub-server:0.2.0
 ```
 
-## 📚 Examples
+## Roadmap
 
-- [Basic Example](examples/basic/main.go) - Simple QueueWorker setup with Relica
-- [Server Example](cmd/pubsub-server/main.go) - Full standalone service
-
-## 🗺️ Roadmap
-
-### v0.1.0 (Current - Alpha) ✅
+### v0.1.0 (Released)
 - [x] Core PubSub functionality
 - [x] Relica adapters (MySQL/PostgreSQL/SQLite)
 - [x] Publisher + SubscriptionManager services
 - [x] Standalone REST API server
 - [x] Docker support
-- [x] Health checks
 
-### v0.2.0 (Next)
+### v0.2.0 (Current)
+- [x] Relica v0.14 type-safe expression API
+- [x] Fursy v0.4 HTTP framework with generic handlers
+- [x] RFC 9457 Problem Details for error responses
+- [x] Comprehensive test suite (82-100% coverage)
+- [x] CI with MySQL/PostgreSQL service containers
+- [x] OIDC Codecov integration
 - [ ] Delivery providers (HTTP webhooks, gRPC)
 - [ ] Message encryption
 - [ ] Rate limiting
-- [ ] Metrics (Prometheus)
-- [ ] Admin UI
+- [ ] Prometheus metrics
 
-### v1.0.0 (Stable)
+### v1.0.0 (Planned)
+- [ ] API stability guarantee
+- [ ] Long-term support (3+ years)
 - [ ] OpenAPI/Swagger docs
 - [ ] Authentication/Authorization
-- [ ] Multi-tenancy
-- [ ] Message replay
-- [ ] Full test coverage (>90%)
 
-## 🤝 Contributing
+## Contributing
 
-This is an alpha release. Contributions welcome!
+Contributions welcome!
 
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/amazing`)
@@ -375,32 +327,23 @@ This is an alpha release. Contributions welcome!
 4. Push to branch (`git push origin feature/amazing`)
 5. Open Pull Request
 
-## 📄 License
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
-MIT License - see [LICENSE](LICENSE) file for details.
+## License
 
-## 🙏 Acknowledgments
+MIT License — see [LICENSE](LICENSE) file for details.
 
-- **Relica** - Type-safe query builder (github.com/coregx/relica)
-- **FreiCON** - Original production testing ground
-- **CoreGX Ecosystem** - Part of CoreGX microservices suite
+## Dependencies
 
-## 📞 Support
+- **[Relica](https://github.com/coregx/relica)** v0.14 — Type-safe database query builder
+- **[Fursy](https://github.com/coregx/fursy)** v0.4 — HTTP framework (standalone server only)
+- **[ozzo-validation](https://github.com/go-ozzo/ozzo-validation)** — Request validation
 
-- 🐛 **Issues**: [GitHub Issues](https://github.com/coregx/pubsub/issues)
-- 📖 **Documentation**: [Wiki](https://github.com/coregx/pubsub/wiki)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/coregx/pubsub/discussions)
+## Support
 
----
-
-**⚠️ Pre-Release Status**
-
-This is a pre-release version (v0.1.0 development). The library is production-ready and battle-tested in FreiCON Railway Management System with 95.9% test coverage and zero linter issues. APIs may evolve before v1.0.0 LTS release.
-
-**📦 Dependencies**
-
-This library uses [Relica](https://github.com/coregx/relica) for type-safe database operations. All dependencies are properly published and available through Go modules.
+- **Issues**: [GitHub Issues](https://github.com/coregx/pubsub/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/coregx/pubsub/discussions)
 
 ---
 
-Made with ❤️ by CoreGX Team
+Production-ready and battle-tested in FreiCON Railway Management System. Part of the [CoreGX](https://github.com/coregx) ecosystem.
