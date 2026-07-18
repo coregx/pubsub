@@ -247,7 +247,7 @@ func TestQueue_CanAttemptDelivery(t *testing.T) {
 			},
 			maxAttempts:  10,
 			expectedErr:  ErrQueueItemExpired,
-			errorMessage: "Queue item has expired",
+			errorMessage: ErrQueueItemExpired.Message,
 		},
 		{
 			name: "Already sent",
@@ -257,7 +257,7 @@ func TestQueue_CanAttemptDelivery(t *testing.T) {
 			},
 			maxAttempts:  10,
 			expectedErr:  ErrQueueItemAlreadySent,
-			errorMessage: "Queue item already sent",
+			errorMessage: ErrQueueItemAlreadySent.Message,
 		},
 		{
 			name: "Max attempts exceeded",
@@ -268,7 +268,7 @@ func TestQueue_CanAttemptDelivery(t *testing.T) {
 			},
 			maxAttempts:  10,
 			expectedErr:  ErrMaxAttemptsExceeded,
-			errorMessage: "Maximum delivery attempts exceeded",
+			errorMessage: ErrMaxAttemptsExceeded.Message,
 		},
 		{
 			name: "Not ready for retry yet",
@@ -280,7 +280,7 @@ func TestQueue_CanAttemptDelivery(t *testing.T) {
 			},
 			maxAttempts:  10,
 			expectedErr:  ErrNotReadyForRetry,
-			errorMessage: "Not ready for retry yet",
+			errorMessage: ErrNotReadyForRetry.Message,
 		},
 	}
 
@@ -504,36 +504,36 @@ func TestQueue_DomainErrors(t *testing.T) {
 			name:     "QueueItemExpired",
 			err:      ErrQueueItemExpired,
 			code:     "QUEUE_EXPIRED",
-			message:  "Queue item has expired",
-			errorStr: "Queue item has expired",
+			message:  ErrQueueItemExpired.Message,
+			errorStr: ErrQueueItemExpired.Message,
 		},
 		{
 			name:     "QueueItemAlreadySent",
 			err:      ErrQueueItemAlreadySent,
 			code:     "ALREADY_SENT",
-			message:  "Queue item already sent",
-			errorStr: "Queue item already sent",
+			message:  ErrQueueItemAlreadySent.Message,
+			errorStr: ErrQueueItemAlreadySent.Message,
 		},
 		{
 			name:     "MaxAttemptsExceeded",
 			err:      ErrMaxAttemptsExceeded,
 			code:     "MAX_ATTEMPTS",
-			message:  "Maximum delivery attempts exceeded",
-			errorStr: "Maximum delivery attempts exceeded",
+			message:  ErrMaxAttemptsExceeded.Message,
+			errorStr: ErrMaxAttemptsExceeded.Message,
 		},
 		{
 			name:     "NotReadyForRetry",
 			err:      ErrNotReadyForRetry,
 			code:     "NOT_READY",
-			message:  "Not ready for retry yet",
-			errorStr: "Not ready for retry yet",
+			message:  ErrNotReadyForRetry.Message,
+			errorStr: ErrNotReadyForRetry.Message,
 		},
 		{
 			name:     "NoRetryScheduled",
 			err:      ErrNoRetryScheduled,
 			code:     "NO_RETRY",
-			message:  "No retry scheduled",
-			errorStr: "No retry scheduled",
+			message:  ErrNoRetryScheduled.Message,
+			errorStr: ErrNoRetryScheduled.Message,
 		},
 	}
 
