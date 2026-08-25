@@ -347,3 +347,14 @@ MIT License — see [LICENSE](LICENSE) file for details.
 ---
 
 Production-ready and battle-tested in FreiCON Railway Management System. Part of the [CoreGX](https://github.com/coregx) ecosystem.
+
+
+## Star History
+
+<a href="https://starhistory.io">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.starhistory.io/png?repos=coregx/pubsub&style=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.starhistory.io/png?repos=coregx/pubsub&style=professional" />
+   <img alt="Star History Chart" src="https://api.starhistory.io/png?repos=coregx/pubsub" width="800" />
+ </picture>
+</a>
