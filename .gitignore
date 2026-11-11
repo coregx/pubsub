@@ -42,6 +42,7 @@ build/
 
 # AI local folders
 .claude/
+.pm/
 .goda/
 .goco/
 
