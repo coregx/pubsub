@@ -45,6 +45,8 @@ build/
 .pm/
 .goda/
 .goco/
+.gode/
+.mcp.json
 
 # Internal developer docs
 docs/dev/
